@@ -30,6 +30,20 @@ def delay():
     time.sleep(actual_sleep)
 
 
+def send_post(url, payload, headers=None):
+    if headers:
+        r = requests.post(url, json=payload, headers=headers)
+        return r.json()
+    else:
+        r = requests.post(url, json=payload)
+        return r.json()
+
+
+def send_get(url, params):
+    r = requests.get(url, params=params)
+    return r.json()
+
+
 email = raw_input("Enter your e-mail for Zybooks: ")
 password = raw_input("Enter your password for Zybooks: ")
 
@@ -46,9 +60,7 @@ headers = {'accept': 'application/json, text/javascript, */*; q=0.01',
                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36'
            }
 
-login_response = requests.post("https://zyserver.zybooks.com/v1/signin", headers=headers, json=login_payload)
-
-login_data = login_response.json()
+login_data = send_post("https://zyserver.zybooks.com/v1/signin", login_payload, headers=headers)
 
 if login_data['success']:
     print("Login Success")
@@ -61,8 +73,7 @@ if login_data['success']:
     get_classes_url = 'https://zyserver.zybooks.com/v1/user/' + str(user_id) + '/items'
     get_classes_params = {'items': '["zybooks"]', 'auth_token': auth_token}
 
-    get_classes_response = requests.get(get_classes_url, params=get_classes_params)
-    get_classes_data = get_classes_response.json()
+    get_classes_data = send_get(get_classes_url, get_classes_params)
 
     for subject in get_classes_data['items']['zybooks']:
         zybook_code = subject['zybook_code']
@@ -71,8 +82,7 @@ if login_data['success']:
         class_info_params = {'zybooks': '["' + zybook_code + '"]',
                              'auth_token': auth_token}
 
-        class_info_response = requests.get(class_info_url, params=class_info_params)
-        class_info_data = class_info_response.json()
+        class_info_data = send_get(class_info_url, class_info_params)
 
         zybook = class_info_data['zybooks'][0]
 
@@ -93,7 +103,8 @@ if login_data['success']:
                 section_id = section['canonical_section_id']
                 section_num = section['canonical_section_number']
 
-                if str(section_num) not in settings.SECTION_NUMBERS.split(","):
+                if str(section_num) not in settings.SECTION_NUMBERS.split(",")\
+                        and settings.SECTION_NUMBERS != '*':
                     # Go to next section if it is not in settings
                     continue
 
@@ -103,8 +114,7 @@ if login_data['success']:
                     .format(chapter_num, section_num)
                 section_params = {'auth_token': auth_token}
 
-                section_response = requests.get(section_url, section_params)
-                section_data = section_response.json()
+                section_data = send_get(section_url, section_params)
 
                 content_resources = section_data['section']['content_resources']
 
@@ -137,22 +147,25 @@ if login_data['success']:
                             num_questions = len(payload['questions'])
                             for i in range(num_questions):
                                 participation_payload['part'] = i
-                                participation_response = requests.post(resource_url,
-                                                                       headers=headers,
-                                                                       json=participation_payload)
-                                participation_response_data = participation_response.json()
-                                if participation_response_data['success'] is True:
-                                    print("Question id {} number {} completed.".format(resource_id, i))
+                                response_data = send_post(resource_url, participation_payload)
+                                if response_data['success'] is True:
+                                    print("Question id {} number {} completed.".format(resource_id, i + 1))
                                     delay()
                         elif resource_type == 'custom' and payload['tool'] == 'zyAnimator':
                             participation_payload['part'] = 0
                             participation_payload['metadata'] = '{"event": "animation completely watched"}'
-                            participation_response = requests.post(resource_url,
-                                                               headers=headers,
-                                                               json=participation_payload)
-                            participation_response_data = participation_response.json()
-                            if participation_response_data['success'] is True:
+                            response_data = send_post(resource_url, participation_payload)
+
+                            if response_data['success'] is True:
                                 print("Participation video id {} completed.".format(resource_id))
+                                delay()
+                        elif resource_type == 'custom' and payload['tool'] == 'defnMatch':
+                            participation_payload['part'] = 0
+                            participation_payload['answer'] = '[]'
+                            response_data = send_post(resource_url, participation_payload)
+
+                            if response_data['success'] is True:
+                                print("Definition Match id {} completed.".format(resource_id))
                                 delay()
                     elif activity_type == 'challenge':
                         print("Challenge: " + str(resource))
