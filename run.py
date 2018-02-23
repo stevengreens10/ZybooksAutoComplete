@@ -1,5 +1,4 @@
 import requests
-import json
 
 email = raw_input("Enter your e-mail for Zybooks: ")
 password = raw_input("Enter your password for Zybooks: ")
@@ -21,7 +20,7 @@ login_response = requests.post("https://zyserver.zybooks.com/v1/signin", headers
 
 login_data = login_response.json()
 
-if login_data["success"]:
+if login_data['success']:
     print("Login Success")
 
     # print(login_data)
@@ -35,8 +34,8 @@ if login_data["success"]:
     get_classes_response = requests.get(get_classes_url, params=get_classes_params)
     get_classes_data = get_classes_response.json()
 
-    for subject in get_classes_data["items"]["zybooks"]:
-        zybook_code = subject["zybook_code"]
+    for subject in get_classes_data['items']['zybooks']:
+        zybook_code = subject['zybook_code']
 
         class_info_url = 'https://zyserver.zybooks.com/v1/zybooks'
         class_info_params = {'zybooks': '["' + zybook_code + '"]',
@@ -45,13 +44,13 @@ if login_data["success"]:
         class_info_response = requests.get(class_info_url, params=class_info_params)
         class_info_data = class_info_response.json()
 
-        zybook = class_info_data["zybooks"][0]
+        zybook = class_info_data['zybooks'][0]
 
-        for chapter in zybook["chapters"]:
-            for section in chapter["sections"]:
-                chapter_num = section["canonical_chapter_number"]
-                section_id = section["canonical_section_id"]
-                section_num = section["canonical_section_number"]
+        for chapter in zybook['chapters']:
+            for section in chapter['sections']:
+                chapter_num = section['canonical_chapter_number']
+                section_id = section['canonical_section_id']
+                section_num = section['canonical_section_number']
 
                 section_url = 'https://zyserver.zybooks.com/v1/zybook/NCSUCSC226ScafuroSpring2018/chapter/{}/section/{}'\
                     .format(chapter_num, section_num)
@@ -59,7 +58,17 @@ if login_data["success"]:
 
                 section_response = requests.get(section_url, section_params)
                 section_data = section_response.json()
-                
+
+                content_resources = section_data['section']['content_resources']
+
+                for resource in content_resources:
+                    activity_type = resource['activity_type']
+
+                    resource_id = resource['id']
+                    if activity_type == 'participation':
+                        print("Participation: " + str(resource))
+                    elif activity_type == 'challenge':
+                        print("Challenge: " + str(resource))
 
 else:
     print("Login information incorrect!")
