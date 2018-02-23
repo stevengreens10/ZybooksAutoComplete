@@ -1,4 +1,34 @@
+import decimal
+import random
+
 import requests
+import settings
+import datetime
+import hashlib
+import time
+
+
+def checksum(activity_id, ts, token):
+    md5 = hashlib.md5()
+    md5.update('content_resource/{}/activity'.format(activity_id))
+    md5.update(ts)
+    md5.update(token)
+    return md5.hexdigest()
+
+
+def delay():
+    # Delays the program
+    min_sleep = float(settings.TIME_INTERVAL) * (1 - (float(settings.PERCENTAGE_VARIANCE) / 100))
+    max_sleep = float(settings.TIME_INTERVAL) * (1 + float(settings.PERCENTAGE_VARIANCE) / 100)
+
+    if max_sleep == min_sleep:
+        time.sleep(max_sleep)
+        return
+
+    actual_sleep = float(decimal.Decimal(random.randrange(int(min_sleep * 100), int(max_sleep * 100))) / 100)
+    print("Sleeping for {} seconds".format(actual_sleep))
+    time.sleep(actual_sleep)
+
 
 email = raw_input("Enter your e-mail for Zybooks: ")
 password = raw_input("Enter your password for Zybooks: ")
@@ -46,13 +76,30 @@ if login_data['success']:
 
         zybook = class_info_data['zybooks'][0]
 
+        if (settings.COURSE != zybook_code
+                and settings.COURSE != zybook['course']['course_call_number']
+                and settings.COURSE != zybook['course']['name']):
+            # Go to next zybook
+            continue
+
         for chapter in zybook['chapters']:
+
+            if settings.CHAPTER_NUMBER != chapter["number"]:
+                # Go to next chapter
+                continue
+
             for section in chapter['sections']:
                 chapter_num = section['canonical_chapter_number']
                 section_id = section['canonical_section_id']
                 section_num = section['canonical_section_number']
 
-                section_url = 'https://zyserver.zybooks.com/v1/zybook/NCSUCSC226ScafuroSpring2018/chapter/{}/section/{}'\
+                if str(section_num) not in settings.SECTION_NUMBERS.split(","):
+                    # Go to next section if it is not in settings
+                    continue
+
+                print("Chapter " + str(chapter_num) + " : Section " + str(section_num))
+
+                section_url = 'https://zyserver.zybooks.com/v1/zybook/NCSUCSC226ScafuroSpring2018/chapter/{}/section/{}' \
                     .format(chapter_num, section_num)
                 section_params = {'auth_token': auth_token}
 
@@ -62,11 +109,51 @@ if login_data['success']:
                 content_resources = section_data['section']['content_resources']
 
                 for resource in content_resources:
-                    activity_type = resource['activity_type']
 
+                    activity_type = resource['activity_type']
+                    resource_type = resource['type']
                     resource_id = resource['id']
+
+                    payload = resource['payload']
+
+                    resource_url = 'https://zyserver.zybooks.com/v1/content_resource/{}/activity' \
+                        .format(resource_id)
+
+                    now = datetime.datetime.now()
+                    timestamp = now.strftime("%Y-%m-%dT%H:%M.000")
+                    cs = checksum(resource_id, timestamp, auth_token)
+
                     if activity_type == 'participation':
                         print("Participation: " + str(resource))
+
+                        participation_payload = {'auth_token': auth_token,
+                                                 'complete': True,
+                                                 'timestamp': timestamp,
+                                                 'zybook_code': zybook_code,
+                                                 '__cs__': cs}
+
+                        if resource_type == 'multiple_choice':
+                            participation_payload['answer'] = 1
+                            num_questions = len(payload['questions'])
+                            for i in range(num_questions):
+                                participation_payload['part'] = i
+                                participation_response = requests.post(resource_url,
+                                                                       headers=headers,
+                                                                       json=participation_payload)
+                                participation_response_data = participation_response.json()
+                                if participation_response_data['success'] is True:
+                                    print("Question id {} number {} completed.".format(resource_id, i))
+                                    delay()
+                        elif resource_type == 'custom' and payload['tool'] == 'zyAnimator':
+                            participation_payload['part'] = 0
+                            participation_payload['metadata'] = '{"event": "animation completely watched"}'
+                            participation_response = requests.post(resource_url,
+                                                               headers=headers,
+                                                               json=participation_payload)
+                            participation_response_data = participation_response.json()
+                            if participation_response_data['success'] is True:
+                                print("Participation video id {} completed.".format(resource_id))
+                                delay()
                     elif activity_type == 'challenge':
                         print("Challenge: " + str(resource))
 
