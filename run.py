@@ -27,7 +27,7 @@ def delay():
         return
 
     actual_sleep = float(decimal.Decimal(random.randrange(int(min_sleep * 100), int(max_sleep * 100))) / 100)
-    print("Sleeping for {} seconds".format(actual_sleep))
+    # print("Sleeping for {} seconds".format(actual_sleep))
     time.sleep(actual_sleep)
 
 
@@ -48,6 +48,8 @@ def send_get(url, params):
 email = raw_input("Enter your e-mail for Zybooks: ")
 # print("Enter your password for Zybooks: ")
 password = getpass()
+
+print("")
 
 login_payload = {"email": email, "password": password}
 
@@ -105,12 +107,12 @@ if login_data['success']:
                 section_id = section['canonical_section_id']
                 section_num = section['canonical_section_number']
 
-                if str(section_num) not in settings.SECTION_NUMBERS.split(",")\
+                if str(section_num) not in settings.SECTION_NUMBERS.split(",") \
                         and settings.SECTION_NUMBERS != '*':
                     # Go to next section if it is not in settings
                     continue
 
-                print("Chapter " + str(chapter_num) + " : Section " + str(section_num))
+                print("\n---Chapter " + str(chapter_num) + " : Section " + str(section_num) + "---\n")
 
                 section_url = 'https://zyserver.zybooks.com/v1/zybook/NCSUCSC226ScafuroSpring2018/chapter/{}/section/{}' \
                     .format(chapter_num, section_num)
@@ -121,10 +123,11 @@ if login_data['success']:
                 content_resources = section_data['section']['content_resources']
 
                 for resource in content_resources:
-
+                    # print(resource)
                     activity_type = resource['activity_type']
                     resource_type = resource['type']
                     resource_id = resource['id']
+                    num_parts = resource['parts']
 
                     payload = resource['payload']
 
@@ -135,40 +138,22 @@ if login_data['success']:
                     timestamp = now.strftime("%Y-%m-%dT%H:%M.000")
                     cs = checksum(resource_id, timestamp, auth_token)
 
-                    if activity_type == 'participation':
-                        participation_payload = {'auth_token': auth_token,
-                                                 'complete': True,
-                                                 'timestamp': timestamp,
-                                                 'zybook_code': zybook_code,
-                                                 '__cs__': cs}
+                    answer_payload = {'auth_token': auth_token, 'complete': True, 'timestamp': timestamp,
+                                      'zybook_code': zybook_code, '__cs__': cs, 'metadata': '{}', 'answer': 1}
 
-                        if resource_type == 'multiple_choice':
-                            participation_payload['answer'] = 1
-                            num_questions = len(payload['questions'])
-                            for i in range(num_questions):
-                                participation_payload['part'] = i
-                                response_data = send_post(resource_url, participation_payload)
-                                if response_data['success'] is True:
-                                    print("Question id {} number {} completed.".format(resource_id, i + 1))
-                                    delay()
-                        elif resource_type == 'custom' and payload['tool'] == 'zyAnimator':
-                            participation_payload['part'] = 0
-                            participation_payload['metadata'] = '{"event": "animation completely watched"}'
-                            response_data = send_post(resource_url, participation_payload)
+                    for i in range(num_parts):
+                        answer_payload['part'] = i
+                        response_data = send_post(resource_url, answer_payload)
+                        if response_data['success'] is True:
 
-                            if response_data['success'] is True:
-                                print("Participation video id {} completed.".format(resource_id))
-                                delay()
-                        elif resource_type == 'custom' and payload['tool'] == 'defnMatch':
-                            participation_payload['part'] = 0
-                            participation_payload['answer'] = '[]'
-                            response_data = send_post(resource_url, participation_payload)
-
-                            if response_data['success'] is True:
-                                print("Definition Match id {} completed.".format(resource_id))
-                                delay()
-                    elif activity_type == 'challenge':
-                        print("Challenge: " + str(resource))
-
+                            type_str = resource_type
+                            if type_str == 'custom':
+                                type_str = payload['tool']
+                            print('{} "{}" id {} part {} completed.'
+                                  .format(activity_type.title(), type_str, resource_id, i + 1))
+                            delay()
+                        else:
+                            print('{} "{}" id {} part {} failed.'
+                                  .format(activity_type.title(), type_str, resource_id, i + 1))
 else:
     print("Login information incorrect!")
