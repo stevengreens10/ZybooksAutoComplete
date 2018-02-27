@@ -1,5 +1,6 @@
 import decimal
 import random
+from getpass import getpass
 
 import requests
 import settings
@@ -45,7 +46,8 @@ def send_get(url, params):
 
 
 email = raw_input("Enter your e-mail for Zybooks: ")
-password = raw_input("Enter your password for Zybooks: ")
+# print("Enter your password for Zybooks: ")
+password = getpass()
 
 login_payload = {"email": email, "password": password}
 
