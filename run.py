@@ -136,8 +136,6 @@ if login_data['success']:
                     cs = checksum(resource_id, timestamp, auth_token)
 
                     if activity_type == 'participation':
-                        print("Participation: " + str(resource))
-
                         participation_payload = {'auth_token': auth_token,
                                                  'complete': True,
                                                  'timestamp': timestamp,
