@@ -6,14 +6,14 @@
 COURSE = "CSC 226"
 
 # The chapter in which to complete sections
-CHAPTER_NUMBER = 1
+CHAPTER_NUMBER = 10
 
 # The sections to complete (in a comma separated lists
 # Use * for all sections in a chapter
-SECTION_NUMBERS = "13"
+SECTION_NUMBERS = "1"
 
 # Base time between completions (in s), will be subject to percentage variance
-TIME_INTERVAL = 10
+TIME_INTERVAL = 20
 
 # The percentage variance in the time (makes timestamps less obviously correlated)
 

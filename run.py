@@ -89,6 +89,8 @@ if login_data['success']:
         class_info_data = send_get(class_info_url, class_info_params)
 
         zybook = class_info_data['zybooks'][0]
+        
+        # print(zybook)
 
         if (settings.COURSE != zybook_code
                 and settings.COURSE != zybook['course']['course_call_number']
@@ -114,8 +116,8 @@ if login_data['success']:
 
                 print("\n---Chapter " + str(chapter_num) + " : Section " + str(section_num) + "---\n")
 
-                section_url = 'https://zyserver.zybooks.com/v1/zybook/NCSUCSC226ScafuroSpring2018/chapter/{}/section/{}' \
-                    .format(chapter_num, section_num)
+                section_url = 'https://zyserver.zybooks.com/v1/zybook/{}/chapter/{}/section/{}' \
+                    .format(zybook_code, chapter_num, section_num)
                 section_params = {'auth_token': auth_token}
 
                 section_data = send_get(section_url, section_params)
