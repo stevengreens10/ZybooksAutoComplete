@@ -3,10 +3,10 @@
 ## Running
 You will need to use python2 to run the auto-completer.
 
-The following librarie(s) are required and can be installed through pip:
+The following library is required and can be installed through pip:
   - requests
   
-  After installing the required dependencie(s), you can simply run the completer as follows:
+  After installing the required dependency, you can simply run the completer as follows:
   `python run.py`
   
   You will then be prompted to enter your Zybooks email and password.
