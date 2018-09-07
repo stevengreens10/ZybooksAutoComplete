@@ -24,7 +24,7 @@ The following librarie(s) are required and can be installed through pip:
     
     - SECTION_NUMBERS: Comma separated list of sections you wish the completer to complete
     
-        - Can also use '\*' to complete all sections in the chapter
+        - Can also use '*' to complete all sections in the chapter
         
     - TIME_INTERVAL: The base time in seconds to wait before attempting another zybooks problem. (To look authentic)
     
